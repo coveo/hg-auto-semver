@@ -1,6 +1,6 @@
 {
   "name": "coveo-hg-auto-semver",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Automatically bump versions according to hg parent branch name.",
   "main": "index.js",
   "bin": {
