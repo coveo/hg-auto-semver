@@ -14,7 +14,12 @@ function getParentBranch() {
 }
 
 function bump(type) {
-    return execSync(`npm version ${type}`);
+    const publishedVersions = JSON.stringify(execSync(`npm show . versions -json`, {encoding: 'utf8'}));
+    let newVersion;
+    do {
+        newVersion = execSync(`npm version ${type}`, {encoding: 'utf8'}).trim().substr(1);
+    } while(publishedVersions.indexOf(newVersion) !== -1)
+    return newVersion;
 }
 
 try {
