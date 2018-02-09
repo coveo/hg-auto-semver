@@ -9,8 +9,21 @@ const Version = {
     MAJOR: 'major'
 };
 
-function getParentBranch() {
-    return execSync('hg log --rev "p2(.)" --template "{branch}"');
+function getParentBranches() {
+    const currentRev = execSync('hg id -i').toString().trim();
+    const currentBranch = execSync('hg id --branch').toString().trim();
+    const lastestTag = execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
+
+    let branches = [];
+    if (lastestTag) {
+        branches = execSync(`hg log -r "parents(ancestor(${lastestTag}, ${currentRev})::${currentRev} - ancestor(${lastestTag}, ${currentRev}))" --template "{branch} "`).toString().trim().split(' ');
+    } else {
+        branches = [execSync('hg log --rev "p2(.)" --template "{branch}"').toString().trim()];
+    }
+    // remove empty branch and duplicates
+    branches = branches.filter((branch, index, arr) => branch && arr.lastIndexOf(branch) === index);
+    console.log('detected branches:', branches);
+    return branches;
 }
 
 function bump(type) {
@@ -18,25 +31,32 @@ function bump(type) {
     let newVersion;
     do {
         newVersion = execSync(`npm version ${type}`, {encoding: 'utf8'}).trim().substr(1);
-    } while(publishedVersions.indexOf(newVersion) !== -1)
+    } while(publishedVersions.indexOf(newVersion) !== -1);
     return newVersion;
 }
 
 try {
-    const branch = getParentBranch();
     const breakingFeatureRegex = /^breaking-feature-/igm;
     const featureRegex = /^feature-/igm;
+    const branches = getParentBranches();
+    let toBump = Version.PATCH;
 
-    if (branch && breakingFeatureRegex.test(branch)) {
+    branches.forEach(branch => {
+        if (breakingFeatureRegex.test(branch)) {
+            toBump = Version.MAJOR;
+        } else if (toBump === Version.PATCH && featureRegex.test(branch)) {
+            toBump = Version.MINOR;
+        }
+    });
+
+    if (toBump === Version.MAJOR) {
         console.log('Branch name contains "breaking-feature-", bumping a MAJOR version');
-        bump(Version.MAJOR);
-    } else if (branch && featureRegex.test(branch)) {
+    } else if (toBump === Version.MINOR) {
         console.log('Branch name contains "feature-", bumping a MINOR version');
-        bump(Version.MINOR);
     } else {
         console.log('Branch name doesn\'t contains "breaking-feature-" or "feature-", bumping a PATCH version');
-        bump(Version.PATCH);
     }
+    bump(toBump);
 } catch (err) {
     // We don't want our CI to have an error, just log it.
     console.log(err);
