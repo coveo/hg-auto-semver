@@ -16,8 +16,10 @@ function getParentBranches() {
 
     let branches = [];
     if (lastestTag) {
+        // Get all parent branches of commits between current revision and latest tag
         branches = execSync(`hg log -r "parents(ancestor(${lastestTag}, ${currentRev})::${currentRev} - ancestor(${lastestTag}, ${currentRev}))" --template "{branch} "`).toString().trim().split(' ');
     } else {
+        // Get the parent branch of the current commit
         branches = [execSync('hg log --rev "p2(.)" --template "{branch}"').toString().trim()];
     }
     // remove empty branch and duplicates
@@ -41,6 +43,7 @@ try {
     const branches = getParentBranches();
     let toBump = Version.PATCH;
 
+    // Loop on detected branches to bump according to the biggest change
     branches.forEach(branch => {
         if (breakingFeatureRegex.test(branch)) {
             toBump = Version.MAJOR;
