@@ -1,5 +1,5 @@
 # hg-auto-semver
-Automatically bump versions according to parents branch name.
+Automatically bump versions according to parents branch name. Currently supports npm and maven.
 
 ## How it works
 hg-auto-semver checks for the merged branches between the current revision and the latest tag.
