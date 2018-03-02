@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const fs = require('fs');
+
 const execSync = require('child_process').execSync;
 
 const Version = {
@@ -9,13 +11,19 @@ const Version = {
     MAJOR: 'major'
 };
 
+const VersionPosition = {
+    [Version.PATCH]: 3,
+    [Version.MINOR]: 2,
+    [Version.MAJOR]: 1,
+};
+
 function getParentBranches() {
     const currentRev = execSync('hg id -i').toString().trim();
     const currentBranch = execSync('hg id --branch').toString().trim();
     const lastestTag = execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
 
     let branches = [];
-    if (lastestTag) {
+    if (lastestTag != 'null') {
         // Get all parent branches of commits between current revision and latest tag
         branches = execSync(`hg log -r "parents(ancestor(${lastestTag}, ${currentRev})::${currentRev} - ancestor(${lastestTag}, ${currentRev}))" --template "{branch} "`).toString().trim().split(' ');
     } else {
@@ -29,17 +37,35 @@ function getParentBranches() {
 }
 
 function bump(type) {
-    const publishedVersions = JSON.stringify(execSync(`npm show . versions -json`, {encoding: 'utf8'}));
     let newVersion;
-    do {
-        newVersion = execSync(`npm version ${type}`, {encoding: 'utf8'}).trim().substr(1);
-    } while(publishedVersions.indexOf(newVersion) !== -1);
+
+    if (fs.existsSync('pom.xml')) {
+        const publishedVersion = execSync(`mvn -q -Dexec.executable="echo" -Dexec.args='\${project.version}' --non-recursive exec:exec`, {encoding: 'utf8'}).toString().trim();
+        console.log('Detected current version :', publishedVersion);
+
+        const parsedVersion = publishedVersion.match("([0-9]+){1}\.([0-9]+){1}\.([0-9]+){1}");
+        if (parsedVersion.length != 4) {
+            console.log('Did not match a SemVer valid version, please bump manually to a SemVer format.')
+            return;
+        }
+        
+        parsedVersion[VersionPosition[type]] =  (parseInt(parsedVersion[VersionPosition[type]], 10) + 1).toString()
+        newVersion = parsedVersion[VersionPosition[Version.MAJOR]] + "." + parsedVersion[VersionPosition[Version.MINOR]] + "." + parsedVersion[VersionPosition[Version.PATCH]];
+        console.log('Bumping to new version :', newVersion)
+
+        execSync(`mvn versions:set -DnewVersion=${newVersion}`, {encoding: 'utf8'});
+    } else {
+        const publishedVersions = JSON.stringify(execSync(`npm show . versions -json`, {encoding: 'utf8'}));
+        do {
+            newVersion = execSync(`npm version ${type}`, {encoding: 'utf8'}).trim().substr(1);
+        } while(publishedVersions.indexOf(newVersion) !== -1);
+    }
     return newVersion;
 }
 
 try {
-    const breakingFeatureRegex = /^breaking-feature-/igm;
-    const featureRegex = /^feature-/igm;
+    const breakingFeatureRegex = /^breaking-feature[-|\/]/igm;
+    const featureRegex = /^feature[-|\/]/igm;
     const branches = getParentBranches();
     let toBump = Version.PATCH;
 
