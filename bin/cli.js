@@ -40,7 +40,7 @@ function bump(type) {
     let newVersion;
 
     if (fs.existsSync('pom.xml')) {
-        const publishedVersion = execSync(`mvn -q -Dexec.executable="echo" -Dexec.args='\${project.version}' --non-recursive exec:exec`, {encoding: 'utf8'}).trim();
+        const publishedVersion = execSync(`mvn -q -Dexec.executable="echo" -Dexec.args='\${project.version}' --non-recursive exec:exec`, {encoding: 'utf8'}).toString().trim();
         console.log('Detected current version :', publishedVersion);
 
         const parsedVersion = publishedVersion.match("([0-9]+){1}\.([0-9]+){1}\.([0-9]+){1}");
@@ -53,7 +53,7 @@ function bump(type) {
         newVersion = parsedVersion[VersionPosition[Version.MAJOR]] + "." + parsedVersion[VersionPosition[Version.MINOR]] + "." + parsedVersion[VersionPosition[Version.PATCH]];
         console.log('Bumping to new version :', newVersion)
 
-        execSync(`mvn versions:set -DnewVersion=${newVersion}`, {encoding: 'utf8'}).trim();
+        execSync(`mvn versions:set -DnewVersion=${newVersion}`, {encoding: 'utf8'});
     } else {
         const publishedVersions = JSON.stringify(execSync(`npm show . versions -json`, {encoding: 'utf8'}));
         do {
