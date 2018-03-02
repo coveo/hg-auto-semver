@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const fs = require('fs');
+
 const execSync = require('child_process').execSync;
 
 const Version = {
@@ -37,9 +39,8 @@ function getParentBranches() {
 function bump(type) {
     let newVersion;
 
-    var fs = require('fs');
     if (fs.existsSync('pom.xml')) {
-        const publishedVersion = JSON.stringify(execSync(`mvn -q -Dexec.executable="echo" -Dexec.args='\${project.version}' --non-recursive exec:exec`, {encoding: 'utf8'})).replace("\\n","");
+        const publishedVersion = execSync(`mvn -q -Dexec.executable="echo" -Dexec.args='\${project.version}' --non-recursive exec:exec`, {encoding: 'utf8'}).trim();
         console.log('Detected current version :', publishedVersion);
 
         const parsedVersion = publishedVersion.match("([0-9]+){1}\.([0-9]+){1}\.([0-9]+){1}");
@@ -52,7 +53,7 @@ function bump(type) {
         newVersion = parsedVersion[VersionPosition[Version.MAJOR]] + "." + parsedVersion[VersionPosition[Version.MINOR]] + "." + parsedVersion[VersionPosition[Version.PATCH]];
         console.log('Bumping to new version :', newVersion)
 
-        JSON.stringify(execSync(`mvn versions:set -DnewVersion=${newVersion}`, {encoding: 'utf8'})).replace("\\n","");
+        execSync(`mvn versions:set -DnewVersion=${newVersion}`, {encoding: 'utf8'}).trim();
     } else {
         const publishedVersions = JSON.stringify(execSync(`npm show . versions -json`, {encoding: 'utf8'}));
         do {
