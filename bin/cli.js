@@ -50,6 +50,12 @@ function bump(type) {
         }
         
         parsedVersion[VersionPosition[type]] =  (parseInt(parsedVersion[VersionPosition[type]], 10) + 1).toString()
+        if (type == Version.MAJOR) {
+            parsedVersion[VersionPosition[Version.PATCH]] = 0;
+            parsedVersion[VersionPosition[Version.MINOR]] = 0;
+        } else if (type == Version.MINOR) {
+            parsedVersion[VersionPosition[Version.PATCH]] = 0;
+        }
         newVersion = parsedVersion[VersionPosition[Version.MAJOR]] + "." + parsedVersion[VersionPosition[Version.MINOR]] + "." + parsedVersion[VersionPosition[Version.PATCH]];
         console.log('Bumping to new version :', newVersion)
 
