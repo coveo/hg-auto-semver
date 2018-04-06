@@ -17,10 +17,26 @@ const VersionPosition = {
     [Version.MAJOR]: 1,
 };
 
+function getCurrentRevision() {
+    return execSync('hg id -i').toString().trim();
+}
+
+function getCurrentBranch() {
+    return execSync('hg id --branch').toString().trim();
+}
+
+function getLatestTag() {
+    return execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
+}
+
+function getParentRevision() {
+    return execSync(`hg log --rev "parents(.)" --template "{rev}" `);
+}
+
 function getParentBranches() {
-    const currentRev = execSync('hg id -i').toString().trim();
-    const currentBranch = execSync('hg id --branch').toString().trim();
-    const latestTag = execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
+    const currentRev = getCurrentRevision()
+    const currentBranch = getCurrentBranch();
+    const latestTag = getLatestTag();
 
     let branches = [];
     if (latestTag != 'null') {
@@ -40,13 +56,14 @@ function bump(type) {
     let newVersion;
 
     if (fs.existsSync('pom.xml')) {
-        const currentRev = execSync('hg id -i').toString().trim();
-        const currentBranch = execSync('hg id --branch').toString().trim();
-        const latestTag = execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
+        const currentRev = getCurrentRevision()
+        const currentBranch = getCurrentBranch();
+        const latestTag = getLatestTag();
+
         if (latestTag != 'null') {
             execSync(`hg update ${latestTag}`);
         } else {
-            const parentCommit = execSync(`hg log --rev "parents(.)" --template "{rev}" `);
+            const parentCommit = getParentRevision();
             execSync(`hg update ${parentCommit}`);
         }
         const publishedVersion = execSync(`mvn -q -Dexec.executable="echo" -Dexec.args='\${project.version}' --non-recursive exec:exec`, {encoding: 'utf8'}).toString().trim();
