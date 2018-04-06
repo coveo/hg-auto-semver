@@ -25,7 +25,7 @@ function getCurrentBranch() {
     return execSync('hg id --branch').toString().trim();
 }
 
-function getLatestTag() {
+function getLatestTag(currentBranch) {
     return execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
 }
 
@@ -36,7 +36,7 @@ function getParentRevision() {
 function getParentBranches() {
     const currentRev = getCurrentRevision()
     const currentBranch = getCurrentBranch();
-    const latestTag = getLatestTag();
+    const latestTag = getLatestTag(currentBranch);
 
     let branches = [];
     if (latestTag != 'null') {
@@ -58,7 +58,7 @@ function bump(type) {
     if (fs.existsSync('pom.xml')) {
         const currentRev = getCurrentRevision()
         const currentBranch = getCurrentBranch();
-        const latestTag = getLatestTag();
+        const latestTag = getLatestTag(currentBranch);
 
         if (latestTag != 'null') {
             execSync(`hg update ${latestTag}`);
