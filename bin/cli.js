@@ -17,15 +17,31 @@ const VersionPosition = {
     [Version.MAJOR]: 1,
 };
 
+function getCurrentRevision() {
+    return execSync('hg id -i').toString().trim();
+}
+
+function getCurrentBranch() {
+    return execSync('hg id --branch').toString().trim();
+}
+
+function getLatestTag() {
+    return execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
+}
+
+function getParentRevision() {
+    return execSync(`hg log --rev "parents(.)" --template "{rev}" `);
+}
+
 function getParentBranches() {
-    const currentRev = execSync('hg id -i').toString().trim();
-    const currentBranch = execSync('hg id --branch').toString().trim();
-    const lastestTag = execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
+    const currentRev = getCurrentRevision()
+    const currentBranch = getCurrentBranch();
+    const latestTag = getLatestTag();
 
     let branches = [];
-    if (lastestTag != 'null') {
+    if (latestTag != 'null') {
         // Get all parent branches of commits between current revision and latest tag
-        branches = execSync(`hg log -r "parents(ancestor(${lastestTag}, ${currentRev})::${currentRev} - ancestor(${lastestTag}, ${currentRev}))" --template "{branch} "`).toString().trim().split(' ');
+        branches = execSync(`hg log -r "parents(ancestor(${latestTag}, ${currentRev})::${currentRev} - ancestor(${latestTag}, ${currentRev}))" --template "{branch} "`).toString().trim().split(' ');
     } else {
         // Get the parent branch of the current commit
         branches = [execSync('hg log --rev "p2(.)" --template "{branch}"').toString().trim()];
@@ -40,7 +56,19 @@ function bump(type) {
     let newVersion;
 
     if (fs.existsSync('pom.xml')) {
+        const currentRev = getCurrentRevision()
+        const currentBranch = getCurrentBranch();
+        const latestTag = getLatestTag();
+
+        if (latestTag != 'null') {
+            execSync(`hg update ${latestTag}`);
+        } else {
+            const parentCommit = getParentRevision();
+            execSync(`hg update ${parentCommit}`);
+        }
         const publishedVersion = execSync(`mvn -q -Dexec.executable="echo" -Dexec.args='\${project.version}' --non-recursive exec:exec`, {encoding: 'utf8'}).toString().trim();
+        execSync(`hg update ${currentRev}`);
+
         console.log('Detected current version :', publishedVersion);
 
         const parsedVersion = publishedVersion.match("([0-9]+){1}\.([0-9]+){1}\.([0-9]+){1}");
