@@ -20,12 +20,12 @@ const VersionPosition = {
 function getParentBranches() {
     const currentRev = execSync('hg id -i').toString().trim();
     const currentBranch = execSync('hg id --branch').toString().trim();
-    const lastestTag = execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
+    const latestTag = execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
 
     let branches = [];
-    if (lastestTag != 'null') {
+    if (latestTag != 'null') {
         // Get all parent branches of commits between current revision and latest tag
-        branches = execSync(`hg log -r "parents(ancestor(${lastestTag}, ${currentRev})::${currentRev} - ancestor(${lastestTag}, ${currentRev}))" --template "{branch} "`).toString().trim().split(' ');
+        branches = execSync(`hg log -r "parents(ancestor(${latestTag}, ${currentRev})::${currentRev} - ancestor(${latestTag}, ${currentRev}))" --template "{branch} "`).toString().trim().split(' ');
     } else {
         // Get the parent branch of the current commit
         branches = [execSync('hg log --rev "p2(.)" --template "{branch}"').toString().trim()];
@@ -40,7 +40,18 @@ function bump(type) {
     let newVersion;
 
     if (fs.existsSync('pom.xml')) {
+        const currentRev = execSync('hg id -i').toString().trim();
+        const currentBranch = execSync('hg id --branch').toString().trim();
+        const latestTag = execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
+        if (latestTag != 'null') {
+            execSync(`hg update ${latestTag}`);
+        } else {
+            const parentCommit = execSync(`hg log --rev "parents(.)" --template "{rev}" `);
+            execSync(`hg update ${parentCommit}`);
+        }
         const publishedVersion = execSync(`mvn -q -Dexec.executable="echo" -Dexec.args='\${project.version}' --non-recursive exec:exec`, {encoding: 'utf8'}).toString().trim();
+        execSync(`hg update ${currentRev}`);
+
         console.log('Detected current version :', publishedVersion);
 
         const parsedVersion = publishedVersion.match("([0-9]+){1}\.([0-9]+){1}\.([0-9]+){1}");
