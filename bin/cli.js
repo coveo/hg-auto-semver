@@ -105,7 +105,6 @@ try {
         case Version.PATCH:
         case Version.MINOR:
         case Version.MAJOR:
-            hasArg = true;
             toBump = arg;
             console.log(`Bumping a ${toBump} version as specified`);
             break;
