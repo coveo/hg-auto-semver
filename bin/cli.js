@@ -106,7 +106,7 @@ try {
         case Version.MINOR:
         case Version.MAJOR:
             hasArg = true;
-            toBump = process.argv[2];
+            toBump = arg;
             console.log(`Bumping a ${toBump} version as specified`);
             break;
         default:
