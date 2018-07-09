@@ -17,6 +17,9 @@ const VersionPosition = {
     [Version.MAJOR]: 1,
 };
 
+const hasPomXML = fs.existsSync('pom.xml');
+const hasPackageJSON = fs.existsSync('package.json');
+
 function getCurrentRevision() {
     return execSync('hg id -i').toString().trim();
 }
@@ -25,7 +28,8 @@ function getCurrentBranch() {
     return execSync('hg id --branch').toString().trim();
 }
 
-function getLatestTag(currentBranch) {
+function getLatestTag() {
+    const currentBranch = getCurrentBranch();
     return execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
 }
 
@@ -33,10 +37,20 @@ function getParentRevision() {
     return execSync(`hg log --rev "parents(.)" --template "{rev}" `);
 }
 
+// Removes the "v" at the begining of the current version;
+function getCleanVersion() {
+    return execSync(`hg log -r "." --template "{latesttag}"`).toString().trim().substr(1);
+}
+
+function getPackageJSONProperty(property) {
+    if (hasPackageJSON) {
+        return JSON.parse(fs.readFileSync('package.json', 'utf8'))[property];
+    }
+}
+
 function getParentBranches() {
     const currentRev = getCurrentRevision()
-    const currentBranch = getCurrentBranch();
-    const latestTag = getLatestTag(currentBranch);
+    const latestTag = getLatestTag();
 
     let branches = [];
     if (latestTag != 'null') {
@@ -48,17 +62,16 @@ function getParentBranches() {
     }
     // remove empty branch and duplicates
     branches = branches.filter((branch, index, arr) => branch && arr.lastIndexOf(branch) === index);
-    console.log('detected branches:', branches);
+    console.log('detected branches: ', branches);
     return branches;
 }
 
 function bump(type) {
     let newVersion;
 
-    if (fs.existsSync('pom.xml')) {
+    if (hasPomXML) {
         const currentRev = getCurrentRevision()
-        const currentBranch = getCurrentBranch();
-        const latestTag = getLatestTag(currentBranch);
+        const latestTag = getLatestTag();
 
         if (latestTag != 'null') {
             execSync(`hg update ${latestTag}`);
@@ -100,6 +113,13 @@ function bump(type) {
 try {
     const arg = process.argv.length === 3 ? process.argv[2] : '';
     let toBump = Version.PATCH;
+
+    // Set the version to the latest tag
+    if (!hasPomXML && !getPackageJSONProperty('version')) {
+        const currentVersion = getCleanVersion();
+        execSync(`npm version ${currentVersion}`);
+        console.log(`Current version: ${currentVersion}`);
+    }
 
     switch (arg) {
         case Version.PATCH:
