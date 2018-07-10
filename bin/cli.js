@@ -39,7 +39,7 @@ function getParentRevision() {
 
 // Removes the "v" at the begining of the current version;
 function getCleanVersion() {
-    return execSync(`hg log -r "." --template "{latesttag}"`).toString().trim().substr(1);
+    return execSync(`hg log -r "." --template "{latesttag}"`).toString().trim().replace(/^v/, '');
 }
 
 function getPackageJSONProperty(property) {
