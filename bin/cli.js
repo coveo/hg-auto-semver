@@ -21,7 +21,7 @@ const hasPomXML = fs.existsSync('pom.xml');
 const hasPackageJSON = fs.existsSync('package.json');
 
 function getCurrentRevision() {
-    return execSync('hg id -i').toString().trim();
+    return execSync('hg id -i').toString().trim().replace(/\+$/, '');
 }
 
 function getCurrentBranch() {
