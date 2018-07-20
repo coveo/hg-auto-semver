@@ -2,13 +2,12 @@
 'use strict';
 
 const fs = require('fs');
-
 const execSync = require('child_process').execSync;
 
 const Version = {
     PATCH: 'patch',
     MINOR: 'minor',
-    MAJOR: 'major'
+    MAJOR: 'major',
 };
 
 const VersionPosition = {
@@ -18,7 +17,6 @@ const VersionPosition = {
 };
 
 const hasPomXML = fs.existsSync('pom.xml');
-const hasPackageJSON = fs.existsSync('package.json');
 
 function getCurrentRevision() {
     return execSync('hg id -i').toString().trim().replace(/\+$/, '');
@@ -30,30 +28,24 @@ function getCurrentBranch() {
 
 function getLatestTag() {
     const currentBranch = getCurrentBranch();
-    return execSync(`hg log -r "." -b ${currentBranch} --template "{latesttag}"`).toString().trim();
+    const tags = execSync(`hg log -r "::." -b ${currentBranch} --template "{tags} "`).toString().trim().split(' ');
+
+    // Remove empty tags
+    const filteredTags = tags.filter(Boolean);
+
+    return filteredTags[filteredTags.length - 1] || null;
 }
 
 function getParentRevision() {
     return execSync(`hg log --rev "parents(.)" --template "{rev}" `);
 }
 
-// Removes the "v" at the begining of the current version;
-function getCleanVersion() {
-    return execSync(`hg log -r "." --template "{latesttag}"`).toString().trim().replace(/^v/, '');
-}
-
-function getPackageJSONProperty(property) {
-    if (hasPackageJSON) {
-        return JSON.parse(fs.readFileSync('package.json', 'utf8'))[property];
-    }
-}
-
 function getParentBranches() {
-    const currentRev = getCurrentRevision()
+    const currentRev = getCurrentRevision();
     const latestTag = getLatestTag();
 
     let branches = [];
-    if (latestTag != 'null') {
+    if (latestTag != null) {
         // Get all parent branches of commits between current revision and latest tag
         branches = execSync(`hg log -r "parents(ancestor(${latestTag}, ${currentRev})::${currentRev} - ancestor(${latestTag}, ${currentRev}))" --template "{branch} "`).toString().trim().split(' ');
     } else {
@@ -67,13 +59,12 @@ function getParentBranches() {
 }
 
 function bump(type) {
+    const latestTag = getLatestTag();
     let newVersion;
 
     if (hasPomXML) {
-        const currentRev = getCurrentRevision()
-        const latestTag = getLatestTag();
-
-        if (latestTag != 'null') {
+        const currentRev = getCurrentRevision();
+        if (latestTag != null) {
             execSync(`hg update ${latestTag}`);
         } else {
             const parentCommit = getParentRevision();
@@ -98,11 +89,15 @@ function bump(type) {
             parsedVersion[VersionPosition[Version.PATCH]] = 0;
         }
         newVersion = parsedVersion[VersionPosition[Version.MAJOR]] + "." + parsedVersion[VersionPosition[Version.MINOR]] + "." + parsedVersion[VersionPosition[Version.PATCH]];
-        console.log('Bumping to new version :', newVersion)
+        console.log('Bumping to new version :', newVersion);
 
         execSync(`mvn versions:set -DnewVersion=${newVersion}`, {encoding: 'utf8'});
     } else {
         const publishedVersions = JSON.stringify(execSync(`npm show . versions -json`, {encoding: 'utf8'}));
+        if (latestTag != null) {
+            //  Set the version to the latest tagged version
+            execSync(`npm version ${latestTag} --allow-same-version`);
+        }
         do {
             newVersion = execSync(`npm version ${type}`, {encoding: 'utf8'}).trim().substr(1);
         } while (publishedVersions.indexOf(newVersion) !== -1);
@@ -113,13 +108,6 @@ function bump(type) {
 try {
     const arg = process.argv.length === 3 ? process.argv[2] : '';
     let toBump = Version.PATCH;
-
-    // Set the version to the latest tag
-    if (!hasPomXML && !getPackageJSONProperty('version')) {
-        const currentVersion = getCleanVersion();
-        execSync(`npm version ${currentVersion}`);
-        console.log(`Current version: ${currentVersion}`);
-    }
 
     switch (arg) {
         case Version.PATCH:
