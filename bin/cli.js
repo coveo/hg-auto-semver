@@ -33,7 +33,7 @@ function getLatestTag() {
     // Remove empty tags
     const filteredTags = tags.filter(Boolean);
 
-    return filteredTags && filteredTags[filteredTags.length - 1] || null;
+    return filteredTags[filteredTags.length - 1] || null;
 }
 
 function getParentRevision() {
