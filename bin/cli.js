@@ -31,7 +31,7 @@ function getLatestTag() {
     const tags = execSync(`hg log -r "::." -b ${currentBranch} --template "{tags} "`).toString().trim().split(' ');
 
     // Remove empty tags
-    const filteredTags = tags.filter(Boolean);
+    const filteredTags = tags.filter((tag) => tag && tag !== 'tip');
 
     return filteredTags[filteredTags.length - 1] || null;
 }
