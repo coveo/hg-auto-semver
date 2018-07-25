@@ -38,7 +38,7 @@ function getLatestTag() {
 
 function getParentRevision() {
     const currentBranch = getCurrentBranch();
-    return execSync(`hg log --rev "parents(.)" --template "{rev}" -b ${currentBranch} `);
+    return execSync(`hg log --rev "parents(.)" --template "{rev}" -b ${currentBranch}`).toString().trim();
 }
 
 function getParentBranches() {
