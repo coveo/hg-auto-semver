@@ -33,6 +33,8 @@ function getLatestTag() {
     // Remove empty tags
     const filteredTags = tags.filter((tag) => tag && tag !== 'tip');
 
+    console.log('detected tags:', filteredTags);
+
     return filteredTags[filteredTags.length - 1] || null;
 }
 
@@ -95,6 +97,7 @@ function bump(type) {
         execSync(`mvn versions:set -DnewVersion=${newVersion}`, {encoding: 'utf8'});
     } else {
         const publishedVersions = JSON.stringify(execSync(`npm show . versions -json`, {encoding: 'utf8'}));
+        console.log(`latest tag: ${latestTag}`);
         if (latestTag != null) {
             //  Set the version to the latest tagged version
             execSync(`npm version ${latestTag} --allow-same-version`);
